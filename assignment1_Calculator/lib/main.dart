@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      darkTheme: ThemeData.light(),
+      darkTheme: ThemeData.]'(),
       home: Scaffold(
         appBar: AppBar(title: const Text('과제 1 사칙연산 계산기 만들기')),
         body: calculator()
