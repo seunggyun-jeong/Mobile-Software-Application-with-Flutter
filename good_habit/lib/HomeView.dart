@@ -33,25 +33,20 @@ class _HomeWidgetState extends State<HomeWidget> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const SetCutDownMode()));
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-            child: const Text("절연모드로 시작하기")),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const SetBreakMode()));
-          },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
-          child: const Text("금연모드로 시작하기"),
-        )
+        _StartButton(const SetCutDownMode(), "절연모드로 시작하기"),
+        _StartButton(const SetBreakMode(), "금연모드로 시작하기"),
       ],
     );
+  }
+
+  ElevatedButton _StartButton(Widget view, String label) {
+    return ElevatedButton(
+        onPressed: () {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => view));
+        },
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
+        child: Text(label));
   }
 
   Padding Description() {
@@ -63,10 +58,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         child: Text(
           "아직 좋은 습관을 만들기 위해 \n다짐하지 않았어요!",
           style: TextStyle(
-              fontFamily: 'Agrro',
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.red),
+              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red),
           textAlign: TextAlign.center,
         ),
       ),
