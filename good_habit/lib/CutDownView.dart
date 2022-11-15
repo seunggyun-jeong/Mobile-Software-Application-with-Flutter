@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 
 class CutDownView extends StatefulWidget {
   const CutDownView({super.key});
@@ -8,15 +12,53 @@ class CutDownView extends StatefulWidget {
 }
 
 class _CutDownViewState extends State<CutDownView> {
+  // 통계 관련 변수
   int count = 0;
   int setCount = 10;
   int money = 0;
   int nicotine = 0;
   int tar = 0;
 
+  // 습관 분석 관련 변수
+  Duration setTime = const Duration(hours: 1);
+  late DateTime nowTime;
+  late DateTime finishTime;
+  int leftTime = 0;
+
+  int hour = 0;
+  int min = 0;
+  int sec = 0;
+
+  void setTimer() {
+    setState(() {
+      nowTime = DateTime.now();
+      finishTime = nowTime.add(setTime);
+      leftTime = finishTime.difference(nowTime).inSeconds;
+      print("남은시간 =---->$leftTime");
+      Timer.periodic(const Duration(seconds: 1), (timer) => startTimer());
+    });
+  }
+
+  void startTimer() {
+    setState(() {
+      leftTime--;
+      hour = leftTime ~/ 3600;
+      min = (leftTime % 3600) ~/ 60;
+      sec = ((leftTime % 3600) % 60);
+    });
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    nowTime = DateTime.now();
+  }
+
   void incrementCounter() {
     setState(() {
-      if (setCount > 0) {
+      if (setCount > 0 && leftTime == 0) {
         // 한 번 터치 시 할당량 한 개비 감소
         setCount--;
         // 한 번 터치 시 한 개비 증가
@@ -27,6 +69,7 @@ class _CutDownViewState extends State<CutDownView> {
         nicotine = count * 1;
         // 담배 한 개비 당 약 10mg 타르 흡입
         tar = count * 10;
+        setTimer();
       }
     });
   }
@@ -71,16 +114,23 @@ class _CutDownViewState extends State<CutDownView> {
                           child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      "뭐요",
-                                    ),
-                                    Text(
-                                      "뭐가요",
-                                    )
-                                  ],
-                                )
+                                const Text(
+                                  "남은 시간",
+                                  style: TextStyle(fontSize: 20),
+                                ),
+                                SizedBox(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.7,
+                                  height: 80,
+                                  child: FittedBox(
+                                    fit: BoxFit.fitHeight,
+                                    child: Text(
+                                        '${'$hour'.padLeft(2, '0')}:${'$min'.padLeft(2, '0')}:${'$sec'.padLeft(2, '0')}',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontFamily: 'MonoSpace')),
+                                  ),
+                                ),
                               ]),
                         ),
                       ],
