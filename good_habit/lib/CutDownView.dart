@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
-import 'dart:async';
+// ignore_for_file: file_names
 
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:flutter/material.dart';
+import 'package:good_habit/HomeView.dart';
+import 'package:good_habit/SetCutDownModeView.dart';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CutDownView extends StatefulWidget {
   const CutDownView({super.key});
@@ -12,9 +14,10 @@ class CutDownView extends StatefulWidget {
 }
 
 class _CutDownViewState extends State<CutDownView> {
+  // Variable
   // 통계 관련 변수
   int count = 0;
-  int setCount = 10;
+  int setCount = 0;
   int money = 0;
   int nicotine = 0;
   int tar = 0;
@@ -24,146 +27,266 @@ class _CutDownViewState extends State<CutDownView> {
   late DateTime nowTime;
   late DateTime finishTime;
   int leftTime = 0;
+  bool isTimerPlaying = false;
 
   int hour = 0;
   int min = 0;
   int sec = 0;
 
+  // Method
+  // 버튼 터치시 동작하는 메서드
+  void incrementCounter() {
+    setState(() {
+      // 한 번 터치 시 할당량 한 개비 감소
+      setCount--;
+      // 한 번 터치 시 한 개비 증가
+      count++;
+      // 담배 한 개비 당 225원
+      money = count * 225;
+      // 담배 한 개비 당 약 1mg 니코틴 흡입
+      nicotine = count * 1;
+      // 담배 한 개비 당 약 10mg 타르 흡입
+      tar = count * 10;
+      setTimer();
+    });
+  }
+
+  // 타이머 시작 가능 여부 체크 메서드
+  bool canTimerPlay() {
+    if (setCount > 0 && !isTimerPlaying) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  // 타이머 설정 메서드
   void setTimer() {
     setState(() {
+      isTimerPlaying = true;
       nowTime = DateTime.now();
       finishTime = nowTime.add(setTime);
       leftTime = finishTime.difference(nowTime).inSeconds;
-      print("남은시간 =---->$leftTime");
-      Timer.periodic(const Duration(seconds: 1), (timer) => startTimer());
+
+      // 타이머 시작
+      Timer.periodic(const Duration(seconds: 1), (timer) {
+        // 타이머가 0이 되면 타이머 정지
+        late bool timeChecker;
+        timeChecker = startTimer();
+        if (timeChecker == false) {
+          timer.cancel();
+          isTimerPlaying = false;
+        }
+      });
     });
   }
 
-  void startTimer() {
+  // 타이머 동작 메서드
+  bool startTimer() {
+    late bool isRemainTime;
     setState(() {
-      leftTime--;
-      hour = leftTime ~/ 3600;
-      min = (leftTime % 3600) ~/ 60;
-      sec = ((leftTime % 3600) % 60);
+      if (leftTime > 0) {
+        leftTime--;
+        hour = leftTime ~/ 3600;
+        min = (leftTime % 3600) ~/ 60;
+        sec = ((leftTime % 3600) % 60);
+        isRemainTime = true;
+      } else {
+        isRemainTime = false;
+      }
     });
+    return isRemainTime;
   }
 
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-
-    nowTime = DateTime.now();
-  }
-
-  void incrementCounter() {
+  // Key 값으로 디스크에 저장된 데이터 불러오는 메서드
+  // SharedPreferences Class 사용
+  void _loadData() async {
+    var key1 = 'alloc';
+    var key2 = 'timeSlot';
+    SharedPreferences pref = await SharedPreferences.getInstance();
     setState(() {
-      if (setCount > 0 && leftTime == 0) {
-        // 한 번 터치 시 할당량 한 개비 감소
-        setCount--;
-        // 한 번 터치 시 한 개비 증가
-        count++;
-        // 담배 한 개비 당 225원
-        money = count * 225;
-        // 담배 한 개비 당 약 1mg 니코틴 흡입
-        nicotine = count * 1;
-        // 담배 한 개비 당 약 10mg 타르 흡입
-        tar = count * 10;
-        setTimer();
+      var value1 = pref.getInt(key1);
+      if (value1 == null) {
+        setCount = 0;
+      } else {
+        setCount = value1;
+      }
+
+      var value2 = pref.getInt(key2);
+      if (value2 == null) {
+        setTime = const Duration(hours: 1);
+      } else {
+        setTime = Duration(minutes: value2);
       }
     });
   }
 
+  // 앱 내부 데이터 초기화 메서드
+  void _reinitialize() async {
+    var key1 = 'alloc';
+    var key2 = 'timeSlot';
+    SharedPreferences pref = await SharedPreferences.getInstance();
+
+    pref.remove(key1);
+    pref.remove(key2);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (BuildContext context) => const HomeWidget(),
+      ),
+      (Route route) => false,
+    );
+  }
+
+  // 앱 바의 우측 설정 버튼 메서드
+  void _reset() {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (context) => const SetCutDownMode()));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 현재 시간 저장
+    nowTime = DateTime.now();
+    // 저장된 데이터 불러오기
+    _loadData();
+  }
+
+  // View
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // App Bar 설정
       appBar: AppBar(
         title: const Text("절연모드"),
         backgroundColor: Colors.pink,
+        leading: TextButton(
+            onPressed: _reinitialize,
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: const Text("초기화")),
+        actions: [
+          // App Bar의 우측 버튼
+          TextButton(
+              onPressed: _reset,
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text("설정")),
+        ],
       ),
       body: Container(
-        color: Colors.black54,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
-                      child: statisticsSection(),
-                    ),
-                    Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          alignment: Alignment.center,
-                          decoration:
-                              customBoxStyle(10, 10, 0, 0, Colors.amber),
-                          child: const Text(
-                            "습관 분석",
-                            style: TextStyle(fontSize: 40),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          alignment: Alignment.center,
-                          decoration: customBoxStyle(0, 0, 10, 10, Colors.cyan),
-                          child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "남은 시간",
-                                  style: TextStyle(fontSize: 20),
-                                ),
-                                SizedBox(
-                                  width:
-                                      MediaQuery.of(context).size.width * 0.7,
-                                  height: 80,
-                                  child: FittedBox(
-                                    fit: BoxFit.fitHeight,
-                                    child: Text(
-                                        '${'$hour'.padLeft(2, '0')}:${'$min'.padLeft(2, '0')}:${'$sec'.padLeft(2, '0')}',
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: 'MonoSpace')),
-                                  ),
-                                ),
-                              ]),
-                        ),
-                      ],
-                    )
-                  ]),
-            )
-          ],
-        ),
-      ),
+          color: const Color.fromARGB(255, 197, 149, 170),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
+                    child: statisticsSection(),
+                  ),
+                  smokingSlotSection()
+                ]),
+          )),
+      // 흡연 카운트 버튼
       floatingActionButton: FloatingActionButton(
-        onPressed: incrementCounter,
-        backgroundColor: Colors.pink,
+        onPressed: canTimerPlay() ? null : incrementCounter,
+        backgroundColor: canTimerPlay() ? Colors.grey : Colors.pink,
         child: const Icon(Icons.add),
       ),
     );
   }
 
+  // 흡연 간격 세션
+  Column smokingSlotSection() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          alignment: Alignment.center,
+          decoration: customBoxStyle(
+              10, 10, 0, 0, const Color.fromARGB(255, 249, 72, 146)),
+          child: const Text(
+            "흡연 간격",
+            style: TextStyle(fontSize: 40, color: Colors.white),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          alignment: Alignment.center,
+          decoration: customBoxStyle(
+              0, 0, 10, 10, const Color.fromARGB(255, 251, 229, 229)),
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [setTimeSection(), remainingTimeSection()]),
+        ),
+      ],
+    );
+  }
+
+  // 흡연 간격 섹션 - 설정 시간 섹션
+  Column setTimeSection() {
+    return Column(
+      children: [
+        const Text(
+          "설정 시간",
+          style: TextStyle(fontSize: 20),
+        ),
+        SizedBox(
+          width: MediaQuery.of(context).size.width * 0.7,
+          height: 80,
+          child: FittedBox(
+            fit: BoxFit.fitHeight,
+            child: Text(
+                '${'${setTime.inMinutes ~/ 60}'.padLeft(2, '0')}:${'${setTime.inMinutes % 60}'.padLeft(2, '0')}:00',
+                style: const TextStyle(fontFamily: 'MonoSpace')),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 흡연 간격 섹션 - 남은 시간 섹션
+  Column remainingTimeSection() {
+    return Column(
+      children: [
+        const Text(
+          "남은 시간",
+          style: TextStyle(fontSize: 20),
+        ),
+        SizedBox(
+          width: MediaQuery.of(context).size.width * 0.7,
+          height: 80,
+          child: FittedBox(
+            fit: BoxFit.fitHeight,
+            child: Text(
+                '${'$hour'.padLeft(2, '0')}:${'$min'.padLeft(2, '0')}:${'$sec'.padLeft(2, '0')}',
+                style: const TextStyle(fontFamily: 'MonoSpace')),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 통계 섹션
   Column statisticsSection() {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           alignment: Alignment.center,
-          decoration: customBoxStyle(10, 10, 0, 0, Colors.amber),
+          decoration: customBoxStyle(
+              10, 10, 0, 0, const Color.fromARGB(255, 249, 72, 146)),
           child: const Text(
             "통계",
-            style: TextStyle(fontSize: 40),
+            style: TextStyle(fontSize: 40, color: Colors.white),
           ),
         ),
         Container(
           padding: const EdgeInsets.all(20),
           alignment: Alignment.center,
-          decoration: customBoxStyle(0, 0, 10, 10, Colors.cyan),
+          decoration: customBoxStyle(
+              0, 0, 10, 10, const Color.fromARGB(255, 251, 229, 229)),
           child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
             statisticsRow("오늘 할당량", setCount, "개"),
             statisticsRow("오늘 피운 담배", count, "개"),
@@ -176,6 +299,8 @@ class _CutDownViewState extends State<CutDownView> {
     );
   }
 
+  // 통계 섹션 - 표시할 행
+  // Reusable
   Row statisticsRow(String title, int value, String unit) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -185,7 +310,7 @@ class _CutDownViewState extends State<CutDownView> {
           padding: const EdgeInsets.all(8.0),
           alignment: Alignment.centerRight,
           child: Text(
-            title + " : ",
+            "$title : ",
           ),
         ),
         Container(
@@ -199,6 +324,7 @@ class _CutDownViewState extends State<CutDownView> {
     );
   }
 
+  // 사용자 정의 박스 스타일
   BoxDecoration customBoxStyle(
       double topL, double topR, double botL, double botR, Color color) {
     return BoxDecoration(

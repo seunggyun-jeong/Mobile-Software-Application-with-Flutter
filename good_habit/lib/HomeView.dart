@@ -1,6 +1,10 @@
+// ignore_for_file: file_names
+
 import 'package:flutter/material.dart';
+import 'package:good_habit/CutDownView.dart';
 import './SetBreakModeView.dart';
 import 'SetCutDownModeView.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -10,36 +14,61 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> {
+  bool isExistData = false;
+
+  void _loadData() async {
+    var key1 = 'alloc';
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    setState(() {
+      var value1 = pref.getInt(key1);
+      if (value1 == null) {
+        isExistData = false;
+      } else {
+        isExistData = true;
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // 로고 이미지
-            LogoImage(),
-            // 설명
-            Description(),
-            // 사용 시작 버튼 : 절연모드, 금연모드
-            StartButtons()
-          ],
-        ),
+        child: isExistData ? const CutDownView() : firstView(),
       ),
     );
   }
 
-  Row StartButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _StartButton(const SetCutDownMode(), "절연모드로 시작하기"),
-        _StartButton(const SetBreakMode(), "금연모드로 시작하기"),
+  Column firstView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        // 로고 이미지
+        logoImage(),
+        // 설명
+        description(),
+        // 사용 시작 버튼 : 절연모드, 금연모드
+        startButtons()
       ],
     );
   }
 
-  ElevatedButton _StartButton(Widget view, String label) {
+  Row startButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _startButton(const SetCutDownMode(), "절연모드로 시작하기"),
+        _startButton(const SetBreakMode(), "금연모드로 시작하기"),
+      ],
+    );
+  }
+
+  ElevatedButton _startButton(Widget view, String label) {
     return ElevatedButton(
         onPressed: () {
           Navigator.push(
@@ -49,7 +78,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         child: Text(label));
   }
 
-  Padding Description() {
+  Padding description() {
     return const Padding(
       padding: EdgeInsets.all(20.0),
       // 텍스트의 범위를 지정하기 위해 Sized Box 사용
@@ -65,7 +94,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Padding LogoImage() {
+  Padding logoImage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Image.asset(

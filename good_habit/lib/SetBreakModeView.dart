@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:flutter/material.dart';
 
 class SetBreakMode extends StatefulWidget {
@@ -17,7 +19,7 @@ class _SetBreakModeState extends State<SetBreakMode> {
         ),
         body: Container(
           alignment: Alignment.center,
-          child: Text("금연 모드 설정"),
+          child: const Text("금연모드는 아직 준비중입니다!"),
         ));
   }
 }
