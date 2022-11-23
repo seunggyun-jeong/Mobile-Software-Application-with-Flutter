@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:good_habit/HomeView.dart';
 import 'package:good_habit/SetCutDownModeView.dart';
 import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 
 class CutDownView extends StatefulWidget {
   const CutDownView({super.key});
@@ -33,6 +33,9 @@ class _CutDownViewState extends State<CutDownView> {
   int min = 0;
   int sec = 0;
 
+  // Hive box
+  final _myBox = Hive.box('myBox');
+
   // Method
   // 버튼 터치시 동작하는 메서드
   void incrementCounter() {
@@ -41,14 +44,33 @@ class _CutDownViewState extends State<CutDownView> {
       setCount--;
       // 한 번 터치 시 한 개비 증가
       count++;
+
+      calculator();
+
+      // 타이머 종료시간 저장
+      nowTime = DateTime.now();
+      finishTime = nowTime.add(setTime);
+
+      setTimer(nowTime);
+      saveData();
+    });
+  }
+
+  // 통계 데이터 계산
+  void calculator() {
+    setState(() {
       // 담배 한 개비 당 225원
       money = count * 225;
       // 담배 한 개비 당 약 1mg 니코틴 흡입
       nicotine = count * 1;
       // 담배 한 개비 당 약 10mg 타르 흡입
       tar = count * 10;
-      setTimer();
     });
+  }
+
+  void saveData() {
+    _myBox.put('remainingCount', setCount);
+    _myBox.put('count', count);
   }
 
   // 타이머 시작 가능 여부 체크 메서드
@@ -61,12 +83,13 @@ class _CutDownViewState extends State<CutDownView> {
   }
 
   // 타이머 설정 메서드
-  void setTimer() {
+  void setTimer(DateTime startTime) {
     setState(() {
       isTimerPlaying = true;
-      nowTime = DateTime.now();
-      finishTime = nowTime.add(setTime);
-      leftTime = finishTime.difference(nowTime).inSeconds;
+      leftTime = finishTime.difference(startTime).inSeconds;
+
+      _myBox.put('finishTime', finishTime);
+      print("finish Time : ${_myBox.get('finishTime')}");
 
       // 타이머 시작
       Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -99,37 +122,33 @@ class _CutDownViewState extends State<CutDownView> {
   }
 
   // Key 값으로 디스크에 저장된 데이터 불러오는 메서드
-  // SharedPreferences Class 사용
-  void _loadData() async {
-    var key1 = 'alloc';
-    var key2 = 'timeSlot';
-    SharedPreferences pref = await SharedPreferences.getInstance();
+  // Hive 사용
+  void _loadData() {
     setState(() {
-      var value1 = pref.getInt(key1);
-      if (value1 == null) {
-        setCount = 0;
-      } else {
-        setCount = value1;
-      }
+      // 현재 시간 저장
+      nowTime = DateTime.now();
 
-      var value2 = pref.getInt(key2);
-      if (value2 == null) {
-        setTime = const Duration(hours: 1);
-      } else {
-        setTime = Duration(minutes: value2);
-      }
+      // hive db에서 데이터 불러오기
+      var timeSlot = _myBox.get('timeSlot', defaultValue: 1);
+      finishTime = _myBox.get('finishTime', defaultValue: DateTime.now());
+      setCount =
+          _myBox.get('remainingCount', defaultValue: _myBox.get('alloc'));
+      setTime = Duration(minutes: timeSlot);
+      count = _myBox.get('count', defaultValue: 0);
+
+      calculator();
     });
   }
 
   // 앱 내부 데이터 초기화 메서드
-  void _reinitialize() async {
-    var key1 = 'alloc';
-    var key2 = 'timeSlot';
-    SharedPreferences pref = await SharedPreferences.getInstance();
-
-    pref.remove(key1);
-    pref.remove(key2);
-
+  // hive 사용
+  void _reinitialize() {
+    _myBox.delete('alloc');
+    _myBox.delete('timeSlot');
+    _myBox.delete('remainingCount');
+    _myBox.delete('finishTime');
+    _myBox.delete('count');
+    _myBox.delete('modeType');
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (BuildContext context) => const HomeWidget(),
@@ -147,11 +166,15 @@ class _CutDownViewState extends State<CutDownView> {
   @override
   void initState() {
     super.initState();
-
-    // 현재 시간 저장
-    nowTime = DateTime.now();
     // 저장된 데이터 불러오기
     _loadData();
+    // 타이머 종료 시간 저장
+    var remainingTime = finishTime.difference(nowTime).inSeconds;
+    print('remainingTime == $remainingTime');
+    // 남은 시간이 있으면 타이머 재생
+    if (remainingTime > 0) {
+      setTimer(nowTime);
+    }
   }
 
   // View

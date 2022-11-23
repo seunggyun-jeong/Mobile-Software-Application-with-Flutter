@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:good_habit/CutDownView.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
+import 'package:good_habit/type.dart';
 
 class SetCutDownMode extends StatefulWidget {
   const SetCutDownMode({super.key});
@@ -19,17 +20,20 @@ class _SetCutDownModeState extends State<SetCutDownMode> {
   bool isInputAllocFieldEmpty = true;
   bool isInputTimeFieldEmpty = true;
 
+  // Hive Box
+  final _myBox = Hive.box('myBox');
+
   // Method
   // 입력 값을 내부 디스크에 저장하는 메서드
   // SharedPreferences Class
-  void _setData(int alloc, int timeSlot) async {
-    var key1 = 'alloc';
-    var key2 = 'timeSlot';
+  // void _setData(int alloc, int timeSlot) async {
+  //   var key1 = 'alloc';
+  //   var key2 = 'timeSlot';
 
-    SharedPreferences pref = await SharedPreferences.getInstance();
-    pref.setInt(key1, alloc);
-    pref.setInt(key2, timeSlot);
-  }
+  //   SharedPreferences pref = await SharedPreferences.getInstance();
+  //   pref.setInt(key1, alloc);
+  //   pref.setInt(key2, timeSlot);
+  // }
 
   // 설정 완료 버튼 메서드 -> CutDownView로 이동
   void _setButtonMethod() {
@@ -40,6 +44,13 @@ class _SetCutDownModeState extends State<SetCutDownMode> {
       ),
       (Route route) => false,
     );
+  }
+
+  // Hive를 통한 데이터 저장
+  void _setData(int alloc, int timeSlot) {
+    _myBox.put('alloc', alloc);
+    _myBox.put('timeSlot', timeSlot);
+    _myBox.put('modeType', 1);
   }
 
   // Widget

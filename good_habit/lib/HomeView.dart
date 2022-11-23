@@ -2,9 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:good_habit/CutDownView.dart';
+import 'package:good_habit/type.dart';
+import 'package:hive/hive.dart';
 import './SetBreakModeView.dart';
 import 'SetCutDownModeView.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -14,18 +15,25 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> {
-  bool isExistData = false;
+  ModeType modeType = ModeType.none;
 
-  void _loadData() async {
-    var key1 = 'alloc';
-    SharedPreferences pref = await SharedPreferences.getInstance();
+  // Hive Box 불러오기
+  final _myBox = Hive.box('myBox');
+
+  void _loadData() {
     setState(() {
-      var value1 = pref.getInt(key1);
-      if (value1 == null) {
-        isExistData = false;
-      } else {
-        isExistData = true;
+      switch (_myBox.get('modeType', defaultValue: 0)) {
+        case 0:
+          modeType = ModeType.none;
+          break;
+        case 1:
+          modeType = ModeType.cutDownMode;
+          break;
+        case 2:
+          modeType = ModeType.breakMode;
+          break;
       }
+      print("modeType ---> $modeType");
     });
   }
 
@@ -39,7 +47,11 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: isExistData ? const CutDownView() : firstView(),
+        child: modeType == ModeType.cutDownMode
+            ? const CutDownView()
+            : modeType == ModeType.breakMode
+                ? const SetBreakMode()
+                : firstView(),
       ),
     );
   }
@@ -71,8 +83,18 @@ class _HomeWidgetState extends State<HomeWidget> {
   ElevatedButton _startButton(Widget view, String label) {
     return ElevatedButton(
         onPressed: () {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => view));
+          if (label == "금연모드로 시작하기") {
+            _myBox.put('modeType', 2);
+            _myBox.put('breakModeSetTime', DateTime.now());
+            print('modeType --> ${_myBox.get('modeType')}');
+            print('setTime --> ${_myBox.get('breakModeSetTime')}');
+          }
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (BuildContext context) => view,
+            ),
+            (Route route) => false,
+          );
         },
         style: ElevatedButton.styleFrom(backgroundColor: Colors.pink),
         child: Text(label));
